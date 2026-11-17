@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>So‘nuvchi elektromagnit tebranishlar — simulyatsiya</title>
+<style>
+:root{--bg:#f3f7fb;--card:#fff;--ink:#182436;--muted:#5d6b7b;--blue:#1677d2;--orange:#e98225;--green:#15956b;--line:#dce5ef}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+header{background:linear-gradient(120deg,#123b67,#1677d2);color:white;padding:24px 18px}
+header .wrap,main{max-width:1100px;margin:auto}h1{font-size:clamp(1.5rem,4vw,2.25rem);margin:0 0 8px}header p{margin:0;opacity:.92}
+main{padding:18px;display:grid;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 5px 18px #20344a0b}
+h2{font-size:1.2rem;margin:0 0 12px}h3{font-size:1rem;margin:12px 0 6px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.control label{display:flex;justify-content:space-between;gap:8px;font-weight:650;font-size:.93rem}.control input{width:100%;accent-color:var(--blue)}.hint{color:var(--muted);font-size:.88rem}
+.buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}button{border:0;border-radius:10px;padding:10px 15px;background:var(--blue);color:white;font-weight:700;cursor:pointer}button.secondary{background:#e7eef7;color:#20344a}button:focus-visible,input:focus-visible{outline:3px solid #f6b94b;outline-offset:2px}
+canvas{width:100%;height:280px;display:block;border:1px solid var(--line);border-radius:10px;background:#fff}
+#circuit{height:220px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.stat{background:#f5f8fc;border-radius:10px;padding:10px}.stat span{display:block;color:var(--muted);font-size:.82rem}.stat strong{font-size:1.05rem}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem;margin:8px 0}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.note{background:#eef7ff;border-left:4px solid var(--blue);padding:10px 12px;border-radius:8px}.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f5f8fc;padding:10px;border-radius:8px;overflow-wrap:anywhere}
+footer{text-align:center;color:var(--muted);padding:8px 18px 24px;font-size:.85rem}
+@media(max-width:760px){.grid,.controls{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:14px}canvas{height:250px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<h1>Elektromagnit tebranishlar: interaktiv simulyatsiya</h1>
+<p>11-sinf fizika • Kondensator, induktiv g‘altak va qarshilik ta’sirida tebranishlarning o‘zgarishini kuzating.</p>
+</div></header>
+<main>
+<section class="card">
+<h2>1. Parametrlarni o‘zgartiring</h2>
+<div class="controls">
+<div class="control"><label for="L">Induktivlik L <span id="Lv">100 mH</span></label><input id="L" type="range" min="10" max="300" value="100" step="10"><div class="hint">G‘altakning magnit maydon bilan bog‘liq xossasi.</div></div>
+<div class="control"><label for="C">Sig‘im C <span id="Cv">100 µF</span></label><input id="C" type="range" min="10" max="500" value="100" step="10"><div class="hint">Kondensatorning zaryad to‘plash qobiliyati.</div></div>
+<div class="control"><label for="R">Qarshilik R <span id="Rv">20 Ω</span></label><input id="R" type="range" min="0" max="100" value="20" step="1"><div class="hint">Qarshilik oshsa, odatda tebranish tezroq so‘nadi.</div></div>
+</div>
+<div class="buttons"><button id="play">▶ Boshlash</button><button id="pause" class="secondary">Ⅱ To‘xtatish</button><button id="reset" class="secondary">↺ Qayta boshlash</button></div>
+<p class="hint">Simulyatsiya soddalashtirilgan RLC kontur modelidan foydalanadi. Qiymatlar o‘zgartirilganda grafiklar qayta hisoblanadi.</p>
+</section>
+
+<section class="card">
+<h2>2. Tebranish konturi animatsiyasi</h2>
+<canvas id="circuit" aria-label="Kondensator va g‘altakli tebranish konturi animatsiyasi"></canvas>
+<div class="stats">
+<div class="stat"><span>Davr T</span><strong id="Tval">—</strong></div>
+<div class="stat"><span>Chastota ν</span><strong id="nval">—</strong></div>
+<div class="stat"><span>So‘nish koeffitsiyenti β</span><strong id="bval">—</strong></div>
+<div class="stat"><span>Vaqt t</span><strong id="tval">0.00 s</strong></div>
+</div>
+<div class="note"><b>Kuzating:</b> kondensator zaryadi kamayganda tok hosil bo‘ladi; g‘altakda magnit maydon to‘planadi. Qarshilik energiyaning bir qismini issiqlikka aylantiradi, shu sabab amplituda pasayadi.</div>
+</section>
+
+<div class="grid">
+<section class="card">
+<h2>3. Zaryadning vaqtga bog‘liqligi</h2>
+<div class="legend"><span><i class="dot" style="background:#1677d2"></i>So‘nuvchi zaryad q(t)</span><span><i class="dot" style="background:#a8b5c5"></i>Amplituda chegarasi</span></div>
+<canvas id="charge" aria-label="Zaryadning vaqtga bog‘liq grafigi"></canvas>
+<p class="formula">q(t) = q₀ · e<sup>−βt</sup> · cos(ω<sub>d</sub>t)</p>
+<p class="hint">Gorizontal o‘q — vaqt t (s), vertikal o‘q — zaryad q (nisbiy birlik). Egri chiziqning yuqori va pastki chegaralari amplitudaning kamayishini ko‘rsatadi.</p>
+</section>
+<section class="card">
+<h2>4. Tok kuchining vaqtga bog‘liqligi</h2>
+<div class="legend"><span><i class="dot" style="background:#e98225"></i>Tok i(t), nisbiy birlik</span></div>
+<canvas id="current" aria-label="Tok kuchining vaqtga bog‘liq grafigi"></canvas>
+<p class="formula">i(t) = dq/dt</p>
+<p class="hint">Tok kuchi zaryadning vaqt bo‘yicha o‘zgarish tezligidir. Tok va zaryad tebranishlari orasida faza farqi mavjud.</p>
+</section>
+</div>
+
+<section class="card">
+<h2>5. Energiya almashinuvi</h2>
+<canvas id="energy" aria-label="Elektr, magnit va yo‘qotilgan energiyaning o‘zgarishi"></canvas>
+<div class="legend"><span><i class="dot" style="background:#1677d2"></i>Elektr maydon energiyasi</span><span><i class="dot" style="background:#15956b"></i>Magnit maydon energiyasi</span><span><i class="dot" style="background:#e98225"></i>Issiqlikka aylangan energiya</span></div>
+<div class="note">Ideal konturda energiya elektr va magnit maydonlar orasida almashinadi. Haqiqiy konturda qarshilik sabab umumiy elektromagnit energiya kamayib boradi.</div>
+</section>
+
+<section class="card">
+<h2>6. Asosiy formulalar va tushunchalar</h2>
+<div class="grid">
+<div><h3>Ideal LC kontur</h3><p class="formula">T = 2π√(LC)</p><p>Bu formula qarshilik e’tiborga olinmaydigan ideal kontur uchun qo‘llanadi.</p></div>
+<div><h3>Chastota va burchak chastota</h3><p class="formula">ν = 1/T &nbsp; • &nbsp; ω = 2πν</p><p>ν — bir sekunddagi tebranishlar soni (Hz), ω — burchak chastota (rad/s).</p></div>
+<div><h3>So‘nish</h3><p class="formula">β = R/(2L)</p><p>Bu yerda R — Ω, L — H; β ning birligi s⁻¹. Formula ketma-ket RLC konturining so‘nuvchi, tebranuvchi holatiga tegishli.</p></div>
+<div><h3>So‘nuvchi tebranish chastotasi</h3><p class="formula">ω<sub>d</sub> = √(1/(LC) − β²)</p><p>Bu ifoda β² &lt; 1/(LC) bo‘lganda, ya’ni kontur tebranma so‘nish rejimida bo‘lganda ishlatiladi.</p></div>
+</div>
+<p class="hint">Eslatma: animatsiya tushunchalarni ko‘rgazmali tushuntirish uchun normallashtirilgan (nisbiy) zaryad, tok va energiya qiymatlarini ko‘rsatadi; u laboratoriya o‘lchovi o‘rnini bosmaydi.</p>
+</section>
+</main>
+<footer>Interaktiv HTML5 fizika materiali • Internet talab qilmaydi — faylni brauzerda ochish kifoya.</footer>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const Ls=$('L'), Cs=$('C'), Rs=$('R');
+let running=false, time=0, last=0, raf=0;
+const canvases=['circuit','charge','current','energy'].reduce((o,id)=>{o[id]=$(id);o[id].ctx=o[id].getContext('2d');return o;},{});
+function params(){
+ const L=+Ls.value/1000, C=+Cs.value/1e6, R=+Rs.value;
+ const beta=R/(2*L), w0=1/Math.sqrt(L*C), wd=Math.sqrt(Math.max(0,w0*w0-beta*beta));
+ const T=wd>0?2*Math.PI/wd:2*Math.PI/w0, nu=1/T;
+ $('Lv').textContent=Ls.value+' mH';$('Cv').textContent=Cs.value+' µF';$('Rv').textContent=Rs.value+' Ω';
+ $('Tval').textContent=T.toFixed(4)+' s';$('nval').textContent=nu.toFixed(2)+' Hz';$('bval').textContent=beta.toFixed(2)+' s⁻¹';
+ return {L,C,R,beta,w0,wd,T,nu};
+}
+function setup(c){const dpr=window.devicePixelRatio||1, r=c.getBoundingClientRect();c.width=Math.max(1,Math.round(r.width*dpr));c.height=Math.max(1,Math.round(r.height*dpr));const ctx=c.ctx;ctx.setTransform(dpr,0,0,dpr,0,0);return {ctx,w:r.width,h:r.height};}
+function axes(ctx,w,h,yLabel,maxT){
+ const left=46,right=12,top=14,bottom=30, pw=w-left-right,ph=h-top-bottom;
+ ctx.clearRect(0,0,w,h);ctx.font='12px system-ui';ctx.lineWidth=1;ctx.strokeStyle='#e5ebf2';
+ for(let i=0;i<=4;i++){let y=top+ph*i/4;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();}
+ for(let i=0;i<=5;i++){let x=left+pw*i/5;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,h-bottom);ctx.stroke();ctx.fillStyle='#637386';ctx.fillText((maxT*i/5).toFixed(maxT<1?2:1),x-10,h-10);}
+ ctx.strokeStyle='#8493a5';ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(left,h-bottom);ctx.lineTo(w-right,h-bottom);ctx.stroke();
+ ctx.fillStyle='#334155';ctx.fillText(yLabel,6,12);ctx.fillText('t (s)',w-38,h-8);
+ return {left,top,pw,ph,bottom};
+}
+function drawGraph(id,kind,p){
+ const {ctx,w,h}=setup(canvases[id]), maxT=Math.max(.25,Math.min(2.5,p.T*5));
+ const a=axes(ctx,w,h,kind==='q'?'q (nisbiy)':kind==='i'?'i (nisbiy)':'Energiya (nisbiy)',maxT);
+ const beta=p.beta, wd=p.wd, decay=t=>Math.exp(-Math.min(30,beta*t));
+ const q=t=>decay(t)*Math.cos(wd*t);
+ const i=t=>decay(t)*(-beta*Math.cos(wd*t)-wd*Math.sin(wd*t))/Math.max(1,p.w0);
+ function xy(t,v){return [a.left+(t/maxT)*a.pw,a.top+a.ph*(1-(v+1.1)/2.2)];}
+ if(kind==='q'){
+  ctx.setLineDash([5,5]);ctx.strokeStyle='#a8b5c5';for(const sign of [-1,1]){ctx.beginPath();for(let k=0;k<=250;k++){let t=maxT*k/250,y=sign*decay(t),[x,yy]=xy(t,y);k?ctx.lineTo(x,yy):ctx.moveTo(x,yy);}ctx.stroke();}ctx.setLineDash([]);
+ }
+ ctx.strokeStyle=kind==='q'?'#1677d2':'#e98225';ctx.lineWidth=2.4;ctx.beginPath();
+ for(let k=0;k<=500;k++){let t=maxT*k/500,v=kind==='q'?q(t):i(t),[x,y]=xy(t,Math.max(-1.1,Math.min(1.1,v)));k?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+ if(kind==='q'&&beta===0){ctx.fillStyle='#1677d2';ctx.fillText('Amplituda o‘zgarmaydi (R = 0)',a.left+8,a.top+16);}
+}
+function drawCircuit(p){
+ const {ctx,w,h}=setup(canvases.circuit);ctx.clearRect(0,0,w,h);
+ ctx.font='13px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#7a8a9c';ctx.fillStyle='#334155';
+ const x1=w*.18,x2=w*.82,y1=h*.25,y2=h*.75;
+ // wires with a top gap for resistor
+ ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(w*.42,y1);ctx.lineTo(w*.42,y1-7);ctx.lineTo(w*.58,y1-7);ctx.lineTo(w*.58,y1);ctx.lineTo(x2,y1);ctx.lineTo(x2,y2);ctx.lineTo(x1,y2);ctx.lineTo(x1,y1);ctx.stroke();
+ // capacitor plates
+ ctx.strokeStyle='#1677d2';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x1-13,h*.43);ctx.lineTo(x1+13,h*.43);ctx.moveTo(x1-13,h*.52);ctx.lineTo(x1+13,h*.52);ctx.stroke();
+ ctx.fillStyle='#1677d2';ctx.fillText('C',x1-5,h*.36);
+ // coil at bottom
+ ctx.strokeStyle='#15956b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(w*.38,y2);for(let k=0;k<5;k++)ctx.arc(w*.40+k*w*.045,y2, w*.022,Math.PI,0,true);ctx.lineTo(x2,y2);ctx.stroke();
+ ctx.fillStyle='#15956b';ctx.fillText('L',w*.48,y2+30);
+ // resistor symbol top
+ ctx.strokeStyle='#e98225';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(w*.42,y1);ctx.lineTo(w*.435,y1);for(let k=0;k<6;k++)ctx.lineTo(w*(.44+k*.023),y1+(k%2===0?-8:8));ctx.lineTo(w*.58,y1);ctx.stroke();
+ ctx.fillStyle='#e98225';ctx.fillText('R',w*.49,y1-15);
+ // moving charge dots and current arrow
+ const q=Math.exp(-Math.min(30,p.beta*time))*Math.cos(p.wd*time);
+ const n=8, count=Math.round((q+1)*n/2);
+ for(let k=0;k<n;k++){ctx.beginPath();ctx.fillStyle=k<count?'#1677d2':'#d8e3ef';ctx.arc(x1-7+k*2,h*.475,2.8,0,Math.PI*2);ctx.fill();}
+ const current=Math.sin(p.wd*time)*Math.exp(-Math.min(30,p.beta*time));
+ ctx.strokeStyle=current>=0?'#15956b':'#e98225';ctx.lineWidth=3;ctx.beginPath();let ax=w*.7,ay=h*.5;ctx.moveTo(ax-24*Math.sign(current||1),ay);ctx.lineTo(ax+24*Math.sign(current||1),ay);ctx.stroke();ctx.beginPath();ctx.moveTo(ax+24*Math.sign(current||1),ay);ctx.lineTo(ax+15*Math.sign(current||1),ay-6);ctx.lineTo(ax+15*Math.sign(current||1),ay+6);ctx.closePath();ctx.fillStyle=ctx.strokeStyle;ctx.fill();
+ ctx.fillStyle='#334155';ctx.fillText('Kondensator',x1-36,h*.62);ctx.fillText('Tok yo‘nalishi',w*.62,h*.62);
+ ctx.fillStyle='#5d6b7b';ctx.fillText('Zaryad va tok vaqt bo‘yicha o‘zgaradi',12,h-9);
+}
+function drawEnergy(p){
+ const {ctx,w,h}=setup(canvases.energy), maxT=Math.max(.25,Math.min(2.5,p.T*5));
+ const a=axes(ctx,w,h,'Energiya',maxT);
+ ctx.strokeStyle='#1677d2';ctx.lineWidth=2.2;ctx.beginPath();
+ for(let k=0;k<=400;k++){let t=maxT*k/400, q=Math.exp(-Math.min(30,p.beta*t))*Math.cos(p.wd*t),v=q*q,x=a.left+t/maxT*a.pw,y=a.top+a.ph*(1-v);k?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+ ctx.strokeStyle='#15956b';ctx.beginPath();
+ for(let k=0;k<=400;k++){let t=maxT*k/400, env=Math.exp(-Math.min(30,p.beta*t)),v=env*env*Math.sin(p.wd*t)**2,x=a.left+t/maxT*a.pw,y=a.top+a.ph*(1-v);k?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+ ctx.strokeStyle='#e98225';ctx.beginPath();
+ for(let k=0;k<=400;k++){let t=maxT*k/400, v=1-Math.exp(-Math.min(30,2*p.beta*t)),x=a.left+t/maxT*a.pw,y=a.top+a.ph*(1-v);k?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+}
+function render(){const p=params();drawCircuit(p);drawGraph('charge','q',p);drawGraph('current','i',p);drawEnergy(p);$('tval').textContent=time.toFixed(2)+' s';}
+function loop(ts){if(!running)return;if(!last)last=ts;const dt=Math.min(.05,(ts-last)/1000);last=ts;time+=dt;const p=params();if(time>Math.max(1,Math.min(8,p.T*8)))time=0;render();raf=requestAnimationFrame(loop);}
+$('play').addEventListener('click',()=>{if(!running){running=true;last=0;raf=requestAnimationFrame(loop);}});
+$('pause').addEventListener('click',()=>{running=false;cancelAnimationFrame(raf);last=0;});
+$('reset').addEventListener('click',()=>{running=false;cancelAnimationFrame(raf);time=0;last=0;render();});
+[Ls,Cs,Rs].forEach(el=>el.addEventListener('input',()=>render()));
+window.addEventListener('resize',render);
+render();
+})();
+</script>
+</body>
+</html>
